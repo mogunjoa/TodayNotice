@@ -2,7 +2,11 @@ package com.mogun.todaynotice
 
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
+import androidx.core.widget.addTextChangedListener
 import com.mogun.todaynotice.databinding.ActivityMainBinding
 import okhttp3.Call
 import okhttp3.Callback
@@ -13,56 +17,57 @@ import java.io.IOException
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private val client = OkHttpClient()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val client = OkHttpClient()
+        var serverHost = ""
+
+        binding.serverHostEditText.addTextChangedListener {
+            serverHost = it.toString()
+        }
+
+        binding.confirmButton.setOnClickListener {
+            requestServer(serverHost)
+        }
+
+    }
+
+    private fun requestServer(serverHost: String) {
         val request = okhttp3.Request.Builder()
-            .url("http://192.168.0.18:8080")
+            .url("http://$serverHost:8080")
             .build()
 
         val callback = object : Callback {
             override fun onFailure(call: Call, e: IOException) {
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "수신에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                }
                 Log.e("Client", e.toString())
             }
 
             override fun onResponse(call: Call, response: Response) {
                 if(response.isSuccessful) {
-                    Log.e("Client", "${response.body?.string()}")
+                    val response = response.body?.string()  // runOnUiThread에 네트워크 작업을 넣어줘서는 안된다.
+
+                    runOnUiThread { // 비동기 작업내의 UI 작업은 runOnUiThread에 넣어줘야 한다.
+                        binding.informationTextView.isVisible = true
+                        binding.informationTextView.text = response
+
+                        binding.serverHostEditText.isVisible = false
+                        binding.confirmButton.isVisible = false
+                    }
+                } else {
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "수신에 실패했습니다.", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         }
 
         client.newCall(request).enqueue(callback)
-
-        // 소켓을 이용한 서버 통신
-//        Thread {
-//            try {
-//                val socket = Socket("10.0.2.2", 8080)
-//                val printer = PrintWriter(socket.getOutputStream())
-//                val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
-//
-//                printer.println("GET / HTTP/1.1")
-//                printer.println("Host: 127.0.0.1:8080")
-//                printer.println("User-Agent: android")
-//                printer.println("\r\n")
-//                printer.flush()
-//
-//                var input: String? = "-1"
-//                while (input != null && input != "") {
-//                    input = reader.readLine()
-//                    Log.e("Client", input)
-//                }
-//
-//                reader.close()
-//                printer.close()
-//                socket.close()
-//            } catch (e: Exception) {
-//                e.printStackTrace()
-//            }
-//        }.start()
     }
 }
