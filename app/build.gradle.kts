@@ -61,6 +61,7 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
 
     implementation(libs.okhttp)
+    implementation(libs.gson)
 
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
